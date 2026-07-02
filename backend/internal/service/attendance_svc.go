@@ -1,0 +1,186 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/Nattamon123/employee/backend/internal/config"
+	"github.com/Nattamon123/employee/backend/internal/domain"
+	"github.com/Nattamon123/employee/backend/internal/repository"
+	"github.com/Nattamon123/employee/backend/pkg/geo"
+)
+
+// AttendanceService เป็น "สมอง" ของระบบเข้างาน
+// ทำหน้าที่ตรวจสอบ Geofence, คำนวณสถานะสาย, และสั่งบันทึกข้อมูลลง DB
+type AttendanceService struct {
+	attendanceRepo *repository.AttendanceRepo
+	locationRepo   *repository.LocationRepo
+	offsiteRepo    *repository.OffsiteRepo
+	cfg            *config.Config
+}
+
+func NewAttendanceService(
+	ar *repository.AttendanceRepo,
+	lr *repository.LocationRepo,
+	or *repository.OffsiteRepo,
+	cfg *config.Config,
+) *AttendanceService {
+	return &AttendanceService{
+		attendanceRepo: ar,
+		locationRepo:   lr,
+		offsiteRepo:    or,
+		cfg:            cfg,
+	}
+}
+
+// CheckInRequest ข้อมูลที่ Client ส่งมาตอนเช็คอิน
+type CheckInRequest struct {
+	UserID   uuid.UUID
+	Lat      float64
+	Lng      float64
+	PhotoURL *string
+	DeviceID string // Device UUID ที่ส่งมาจากแอป (ใช้ตรวจ Device Binding)
+}
+
+// CheckIn ดำเนินการเช็คอินเข้างาน
+// ขั้นตอน: ตรวจซ้ำ → ตรวจ Geofence (ถ้าไม่ใช่ Offsite) → คำนวณสาย → บันทึก
+func (s *AttendanceService) CheckIn(ctx context.Context, req CheckInRequest) (*domain.Attendance, error) {
+	now := time.Now()                            // ⚡ ใช้เวลาของ Server เสมอ ห้ามเชื่อ Client
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	// 1. ตรวจว่าเช็คอินซ้ำหรือยัง
+	existing, _ := s.attendanceRepo.FindByUserAndDate(ctx, req.UserID, today)
+	if existing != nil {
+		return nil, errors.New("คุณเช็คอินวันนี้ไปแล้ว")
+	}
+
+	// 2. ตรวจ Geofence (ADR 0004)
+	// ถ้ามีคำขอออกหน้างานที่อนุมัติแล้ว → ข้าม Geofence (ADR 0005)
+	isOffsite, err := s.offsiteRepo.HasApprovedForDate(ctx, req.UserID, today)
+	if err != nil {
+		return nil, fmt.Errorf("ตรวจสอบสถานะออกหน้างานล้มเหลว: %w", err)
+	}
+
+	var matchedLocationID *uuid.UUID
+	if !isOffsite {
+		// ดึงจุดทำงานทั้งหมดที่ใช้งานอยู่
+		locations, err := s.locationRepo.ListActive(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("ดึงข้อมูลจุดทำงานล้มเหลว: %w", err)
+		}
+
+		if len(locations) == 0 {
+			return nil, errors.New("ยังไม่มีจุดทำงานในระบบ กรุณาแจ้งแอดมินเพิ่มจุดทำงานก่อน")
+		}
+
+		// ตรวจว่าพนักงานอยู่ภายในรัศมีของจุดทำงานไหนหรือไม่
+		for _, loc := range locations {
+			if geo.IsWithinRadius(loc.Latitude, loc.Longitude, req.Lat, req.Lng, float64(loc.RadiusM)) {
+				locID := loc.ID
+				matchedLocationID = &locID
+				break
+			}
+		}
+
+		if matchedLocationID == nil {
+			return nil, errors.New("คุณอยู่นอกรัศมีที่ทำงาน ไม่สามารถเช็คอินได้ กรุณาเดินเข้าใกล้ออฟฟิศแล้วลองใหม่")
+		}
+	}
+
+	// 3. คำนวณสถานะสาย (หลัง 09:00 = สาย)
+	status := "on_time"
+	if now.Hour() > s.cfg.LateThresholdHour ||
+		(now.Hour() == s.cfg.LateThresholdHour && now.Minute() > s.cfg.LateThresholdMinute) {
+		status = "late"
+	}
+
+	// 4. บันทึกลง DB
+	att := &domain.Attendance{
+		ID:            uuid.New(),
+		UserID:        req.UserID,
+		Date:          today,
+		CheckInAt:     &now,
+		Status:        status,
+		CheckInLat:    &req.Lat,
+		CheckInLng:    &req.Lng,
+		CheckInPhoto:  req.PhotoURL,
+		LocationID:    matchedLocationID,
+	}
+
+	if err := s.attendanceRepo.CreateCheckIn(ctx, att); err != nil {
+		return nil, fmt.Errorf("บันทึกเช็คอินล้มเหลว: %w", err)
+	}
+
+	return att, nil
+}
+
+// CheckOut ดำเนินการเช็คเอาท์ออกงาน
+func (s *AttendanceService) CheckOut(ctx context.Context, userID uuid.UUID, lat, lng *float64, photoURL *string) (*domain.Attendance, error) {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	// ดึงบันทึกเข้างานของวันนี้
+	att, err := s.attendanceRepo.FindByUserAndDate(ctx, userID, today)
+	if err != nil {
+		return nil, errors.New("ไม่พบบันทึกเช็คอินของวันนี้ กรุณาเช็คอินก่อน")
+	}
+
+	if att.CheckOutAt != nil {
+		return nil, errors.New("คุณเช็คเอาท์วันนี้ไปแล้ว")
+	}
+
+	// อัปเดตเวลาเช็คเอาท์ (ใช้เวลา Server)
+	if err := s.attendanceRepo.UpdateCheckOut(ctx, att.ID, now, lat, lng, photoURL); err != nil {
+		return nil, fmt.Errorf("บันทึกเช็คเอาท์ล้มเหลว: %w", err)
+	}
+
+	att.CheckOutAt = &now
+	return att, nil
+}
+
+// GetByDate ดึงบันทึกเข้างานของ user ในวันที่ระบุ
+func (s *AttendanceService) GetByDate(ctx context.Context, userID uuid.UUID, date time.Time) (*domain.Attendance, error) {
+	return s.attendanceRepo.FindByUserAndDate(ctx, userID, date)
+}
+
+// History ดึงประวัติเข้างานทั้งเดือน
+func (s *AttendanceService) History(ctx context.Context, userID uuid.UUID, year, month int) ([]domain.Attendance, error) {
+	return s.attendanceRepo.ListByUserAndMonth(ctx, userID, year, month)
+}
+
+// GetAllByDate ดึงบันทึกเข้างานของทุกคนในวันนั้น (สำหรับ Admin)
+func (s *AttendanceService) GetAllByDate(ctx context.Context, date time.Time) ([]domain.Attendance, error) {
+	return s.attendanceRepo.ListByDate(ctx, date)
+}
+
+// CreateManual บันทึกเข้างานด้วยมือโดยแอดมิน (กรณีพิเศษ เช่น ลืมสแกน หรือเครื่องมีปัญหา)
+func (s *AttendanceService) CreateManual(ctx context.Context, userID uuid.UUID, date time.Time, status string) (*domain.Attendance, error) {
+	// ล้างค่าเวลาให้เป็น 00:00:00 สำหรับวันที่ระบุ
+	targetDate := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+
+	// เช็คว่ามีบันทึกอยู่แล้วหรือไม่
+	existing, _ := s.attendanceRepo.FindByUserAndDate(ctx, userID, targetDate)
+	if existing != nil {
+		return nil, errors.New("มีบันทึกการเข้างานของพนักงานในวันดังกล่าวแล้ว")
+	}
+
+	checkInTime := time.Date(date.Year(), date.Month(), date.Day(), 9, 0, 0, 0, date.Location()) // ตั้งค่าเวลาเข้างานสมมติเป็น 09:00 น.
+
+	att := &domain.Attendance{
+		ID:        uuid.New(),
+		UserID:    userID,
+		Date:      targetDate,
+		CheckInAt: &checkInTime,
+		Status:    status,
+	}
+
+	if err := s.attendanceRepo.CreateCheckIn(ctx, att); err != nil {
+		return nil, fmt.Errorf("บันทึกเข้างานด้วยมือล้มเหลว: %w", err)
+	}
+
+	return att, nil
+}
+

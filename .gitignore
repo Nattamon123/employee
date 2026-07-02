@@ -1,0 +1,30 @@
+# OS files
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Go Build files
+backend/bin/
+backend/out/
+backend/dev-null
+
+# Go configuration / Secrets
+backend/.env
+backend/.env.local
+
+# Web / Node / Frontend
+node_modules/
+dist/
+.env
+.env.local
+
+# Temp / Diff files
+diff.txt
+diff.txt.*

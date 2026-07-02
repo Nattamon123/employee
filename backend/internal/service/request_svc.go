@@ -1,0 +1,96 @@
+package service
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+	"github.com/Nattamon123/employee/backend/internal/domain"
+	"github.com/Nattamon123/employee/backend/internal/repository"
+)
+
+// LeaveService จัดการ business logic เกี่ยวกับใบลา
+type LeaveService struct {
+	leaveRepo *repository.LeaveRepo
+}
+
+func NewLeaveService(lr *repository.LeaveRepo) *LeaveService {
+	return &LeaveService{leaveRepo: lr}
+}
+
+// Create สร้างใบลาใหม่
+func (s *LeaveService) Create(ctx context.Context, req *domain.LeaveRequest) error {
+	req.ID = uuid.New()
+	req.Status = "pending"
+	return s.leaveRepo.Create(ctx, req)
+}
+
+// ListMine ดึงใบลาของ user
+func (s *LeaveService) ListMine(ctx context.Context, userID uuid.UUID) ([]domain.LeaveRequest, error) {
+	return s.leaveRepo.ListByUser(ctx, userID)
+}
+
+// ListPending ดึงใบลาที่รออนุมัติ (Admin)
+func (s *LeaveService) ListPending(ctx context.Context) ([]domain.LeaveRequest, error) {
+	return s.leaveRepo.ListPending(ctx)
+}
+
+// UpdateStatus อนุมัติ/ปฏิเสธใบลา (Admin)
+func (s *LeaveService) UpdateStatus(ctx context.Context, id uuid.UUID, status string, reviewedBy uuid.UUID) error {
+	return s.leaveRepo.UpdateStatus(ctx, id, status, reviewedBy)
+}
+
+// OffsiteService จัดการ business logic เกี่ยวกับคำขอออกหน้างาน
+type OffsiteService struct {
+	offsiteRepo *repository.OffsiteRepo
+}
+
+func NewOffsiteService(or *repository.OffsiteRepo) *OffsiteService {
+	return &OffsiteService{offsiteRepo: or}
+}
+
+// Create สร้างคำขอออกหน้างานใหม่
+func (s *OffsiteService) Create(ctx context.Context, req *domain.OffsiteRequest) error {
+	req.ID = uuid.New()
+	req.Status = "pending"
+	return s.offsiteRepo.Create(ctx, req)
+}
+
+// ListMine ดึงคำขอของ user
+func (s *OffsiteService) ListMine(ctx context.Context, userID uuid.UUID) ([]domain.OffsiteRequest, error) {
+	return s.offsiteRepo.ListByUser(ctx, userID)
+}
+
+// ListPending ดึงคำขอที่รออนุมัติ (Admin)
+func (s *OffsiteService) ListPending(ctx context.Context) ([]domain.OffsiteRequest, error) {
+	return s.offsiteRepo.ListPending(ctx)
+}
+
+// UpdateStatus อนุมัติ/ปฏิเสธคำขอ (Admin)
+func (s *OffsiteService) UpdateStatus(ctx context.Context, id uuid.UUID, status string, reviewedBy uuid.UUID) error {
+	return s.offsiteRepo.UpdateStatus(ctx, id, status, reviewedBy)
+}
+
+// HolidayService จัดการ business logic เกี่ยวกับวันหยุด
+type HolidayService struct {
+	holidayRepo *repository.HolidayRepo
+}
+
+func NewHolidayService(hr *repository.HolidayRepo) *HolidayService {
+	return &HolidayService{holidayRepo: hr}
+}
+
+// ListByYear ดึงวันหยุดทั้งปี
+func (s *HolidayService) ListByYear(ctx context.Context, year int) ([]domain.Holiday, error) {
+	return s.holidayRepo.ListByYear(ctx, year)
+}
+
+// Create เพิ่มวันหยุดใหม่ (Admin)
+func (s *HolidayService) Create(ctx context.Context, h *domain.Holiday) error {
+	h.ID = uuid.New()
+	return s.holidayRepo.Create(ctx, h)
+}
+
+// Delete ลบวันหยุด (Admin)
+func (s *HolidayService) Delete(ctx context.Context, id uuid.UUID) error {
+	return s.holidayRepo.Delete(ctx, id)
+}
