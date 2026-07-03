@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -188,7 +189,12 @@ func LoadUserMiddleware(userSvc *service.UserService) gin.HandlerFunc {
 
 		// ดึงข้อมูล User จากฐานข้อมูล
 		user, err := userSvc.GetByAuthID(c.Request.Context(), authID)
-		if err == nil && user != nil {
+		if err != nil {
+			log.Printf("[LoadUser Error] GetByAuthID failed for authID %s: %v", authID, err)
+		} else if user == nil {
+			log.Printf("[LoadUser Warning] User not found in DB for authID %s", authID)
+		} else {
+			log.Printf("[LoadUser Success] User %s found in DB (ID: %s, role: %s, status: %s)", user.Email, user.ID, user.Role, user.Status)
 			// ฝังข้อมูลลง Context เพื่อให้ Middleware หรือ Handler ถัดไปใช้งานได้
 			c.Set(middleware.ContextKeyUserID, user.ID)
 			c.Set(middleware.ContextKeyRole, user.Role)

@@ -163,8 +163,11 @@ type HistoryRecord struct {
 	Date       string     `json:"date"`
 	UserName   string     `json:"user_name"`
 	Email      string     `json:"email"`
+	Department string     `json:"department"`
+	Position   string     `json:"position"`
 	Status     string     `json:"status"`
 	Type       string     `json:"type"` // attendance, leave, offsite
+	Reason     string     `json:"reason"`
 	CheckInAt  *time.Time `json:"check_in_at,omitempty"`
 	CheckOutAt *time.Time `json:"check_out_at,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
@@ -212,15 +215,18 @@ func (h *AdminHandler) GetMonthlyHistory(c *gin.Context) {
 			createdAt = *a.CheckInAt
 		}
 		records = append(records, HistoryRecord{
-			Date:       a.Date.Format("2006-01-02"),
-			UserName:   u.FullName(),
-			Email:      u.Email,
-			Status:     a.Status,
-			Type:       "attendance",
-			CheckInAt:  a.CheckInAt,
-			CheckOutAt: a.CheckOutAt,
-			CreatedAt:  createdAt,
-		})
+				Date:       a.Date.Format("2006-01-02"),
+				UserName:   u.FullName(),
+				Email:      u.Email,
+				Department: u.Department,
+				Position:   u.Position,
+				Status:     a.Status,
+				Type:       "attendance",
+				Reason:     "",
+				CheckInAt:  a.CheckInAt,
+				CheckOutAt: a.CheckOutAt,
+				CreatedAt:  createdAt,
+			})
 	}
 
 	for _, l := range leaves {
@@ -229,13 +235,16 @@ func (h *AdminHandler) GetMonthlyHistory(c *gin.Context) {
 			continue
 		}
 		records = append(records, HistoryRecord{
-			Date:      l.Date.Format("2006-01-02"),
-			UserName:  u.FullName(),
-			Email:     u.Email,
-			Status:    l.LeaveType + " " + l.Duration + " (" + l.Status + ")",
-			Type:      "leave",
-			CreatedAt: l.CreatedAt,
-		})
+				Date:       l.Date.Format("2006-01-02"),
+				UserName:   u.FullName(),
+				Email:      u.Email,
+				Department: u.Department,
+				Position:   u.Position,
+				Status:     l.LeaveType + " " + l.Duration + " (" + l.Status + ")",
+				Type:       "leave",
+				Reason:     l.Reason,
+				CreatedAt:  l.CreatedAt,
+			})
 	}
 
 	for _, o := range offsites {
@@ -244,13 +253,16 @@ func (h *AdminHandler) GetMonthlyHistory(c *gin.Context) {
 			continue
 		}
 		records = append(records, HistoryRecord{
-			Date:      o.Date.Format("2006-01-02"),
-			UserName:  u.FullName(),
-			Email:     u.Email,
-			Status:    "offsite" + " (" + o.Status + ")",
-			Type:      "offsite",
-			CreatedAt: o.CreatedAt,
-		})
+				Date:       o.Date.Format("2006-01-02"),
+				UserName:   u.FullName(),
+				Email:      u.Email,
+				Department: u.Department,
+				Position:   u.Position,
+				Status:     "offsite" + " (" + o.Status + ")",
+				Type:       "offsite",
+				Reason:     o.Reason,
+				CreatedAt:  o.CreatedAt,
+			})
 	}
 
 	// Sort by date DESC

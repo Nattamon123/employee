@@ -175,6 +175,11 @@ func JWTAuth(jwtSecret string, keyManager *KeyManager) gin.HandlerFunc {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, jwt.ErrSignatureInvalid
 			}
+			
+			// Supabase JWT secret is base64-encoded. We must decode it.
+			if decoded, err := base64.StdEncoding.DecodeString(jwtSecret); err == nil {
+				return decoded, nil
+			}
 			return []byte(jwtSecret), nil
 		})
 

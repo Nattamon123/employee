@@ -88,7 +88,7 @@
     .profile-initial { width: 42px; height: 42px; border-radius: 50%; background-image: var(--primary-gradient); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; border: 2px solid rgba(255,255,255,0.9); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); }
 
     .status-select, .form-select, .form-control { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.6); background-color: rgba(255, 255, 255, 0.5); font-size: 14px; outline: none; transition: 0.3s; }
-    .record-controls { padding: 25px; border-radius: 20px; margin-bottom: 25px; display: flex; align-items: center; gap: 20px; }
+    .record-controls { padding: 25px; border-radius: 20px; margin-bottom: 25px; display: flex; align-items: center; gap: 20px; position: relative; z-index: 10; }
     .date-picker-large { padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.8); background: rgba(255, 255, 255, 0.6); font-size: 15px; font-weight: 700; outline: none; }
 
     .widget { margin-bottom: 35px; }
@@ -252,3 +252,105 @@
     .pagination-container { display: flex; align-items: center; justify-content: center; gap: 15px; padding: 15px 0 5px; }
     .page-info { font-size: 14px; color: var(--text-gray); font-weight: 500; }
     .btn-page:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ──── Modern Month Picker ──── */
+.btn-select-month {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: var(--text-main);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+.btn-select-month:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+.btn-select-month:active {
+  transform: translateY(0);
+}
+
+.month-picker-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 999;
+  width: 260px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border-base);
+  border-top-color: var(--glass-border-highlight);
+  border-left-color: var(--glass-border-highlight);
+  border-radius: 16px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1), var(--glass-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: pickerFadeIn 0.15s ease-out;
+}
+
+@keyframes pickerFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.picker-year-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.btn-picker-arrow {
+  background: none;
+  border: none;
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+
+.btn-picker-arrow:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.btn-month-cell {
+  padding: 10px 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.3);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-month-cell:hover {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.btn-month-cell.selected {
+  background: var(--primary-gradient);
+  color: #FFFFFF;
+  font-weight: 700;
+  border: none;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+}

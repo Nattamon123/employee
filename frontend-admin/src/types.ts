@@ -66,8 +66,11 @@ export interface HistoryRecord {
   date: string;
   user_name: string;
   email: string;
+  department: string;
+  position: string;
   status: string;
   type: string;
+  reason: string;
   check_in_at?: string;
   check_out_at?: string;
   created_at: string;

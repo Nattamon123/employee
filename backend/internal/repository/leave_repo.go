@@ -97,20 +97,58 @@ func (r *LeaveRepo) GetLeaveUsageStats(ctx context.Context, userID uuid.UUID, ye
 	// We need to conditionally sum them.
 	// We can sum them in SQL using a CASE statement.
 	err := r.db.SelectContext(ctx, &stats, `
-		SELECT 
-			leave_type,
-			SUM(
+		WITH combined_leaves AS (
+			-- 1. จากใบลาที่ได้รับการอนุมัติ
+			SELECT 
+				leave_type,
 				CASE 
 					WHEN duration = 'เต็มวัน' THEN 1.0
 					WHEN duration = 'ครึ่งวันเช้า' THEN 0.5
 					WHEN duration = 'ครึ่งวันบ่าย' THEN 0.5
 					ELSE 0.0
-				END
-			) as total_days
-		FROM leave_requests 
-		WHERE user_id = $1 
-		  AND EXTRACT(YEAR FROM date) = $2 
-		  AND status = 'approved'
+				END as days
+			FROM leave_requests 
+			WHERE user_id = $1 
+			  AND EXTRACT(YEAR FROM date) = $2 
+			  AND status = 'approved'
+
+			UNION ALL
+
+			-- 2. จากประวัติบันทึกการเข้างานด้วยมือที่เป็นการลา
+			SELECT 
+				CASE 
+					WHEN status IN ('sick_leave_full', 'sick_leave_morning', 'sick_leave_afternoon') THEN 'ลาป่วย'
+					WHEN status IN ('personal_leave_full', 'personal_leave_morning', 'personal_leave_afternoon') THEN 'ลากิจ'
+					WHEN status = 'annual_leave' THEN 'ลาพักร้อน'
+					ELSE ''
+				END as leave_type,
+				CASE 
+					WHEN status IN ('sick_leave_full', 'personal_leave_full', 'annual_leave') THEN 1.0
+					WHEN status IN ('sick_leave_morning', 'sick_leave_afternoon', 'personal_leave_morning', 'personal_leave_afternoon') THEN 0.5
+					ELSE 0.0
+				END as days
+			FROM attendance
+			WHERE user_id = $1
+			  AND EXTRACT(YEAR FROM date) = $2
+			  -- ตรวจสอบเฉพาะที่เป็นสถานะการลา
+			  AND status IN (
+				  'sick_leave_full', 'sick_leave_morning', 'sick_leave_afternoon',
+				  'personal_leave_full', 'personal_leave_morning', 'personal_leave_afternoon',
+				  'annual_leave'
+			  )
+			  -- หลีกเลี่ยงการนับซ้ำ: หากในวันนั้นมีใบลาที่อนุมัติแล้ว จะไม่เอาจาก attendance
+			  AND date NOT IN (
+				  SELECT date FROM leave_requests 
+				  WHERE user_id = $1 
+					AND EXTRACT(YEAR FROM date) = $2 
+					AND status = 'approved'
+			  )
+		)
+		SELECT 
+			leave_type,
+			SUM(days) as total_days
+		FROM combined_leaves
+		WHERE leave_type != ''
 		GROUP BY leave_type
 	`, userID, year)
 	if err != nil {

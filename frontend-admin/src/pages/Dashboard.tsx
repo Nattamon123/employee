@@ -165,8 +165,8 @@ export default function Dashboard() {
       const holidayName = getHolidayName(ymd);
       const isWknd = isWeekend(loopDate);
 
-      let status = 'ปกติ';
-      let statusClass = 'st-ontime';
+      let status = 'ขาดงาน';
+      let statusClass = 'st-unknown';
       let timestamp = '-';
 
       if (att) {

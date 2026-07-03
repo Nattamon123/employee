@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchAllAttendance, fetchUsers, manualAttendance, fetchAllRequests, fetchHolidays } from '../services/adminApi';
 import type { User, Attendance, LeaveRequest, OffsiteRequest, Holiday } from '../types';
+import DatePicker from '../components/DatePicker';
 
 interface EmployeeRecord {
   user: User;
@@ -121,19 +122,6 @@ export default function DailyRecord() {
     setSaving(false);
   }
 
-  function formatThaiDate(dateStr: string) {
-    try {
-      return new Date(dateStr).toLocaleDateString('th-TH', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-    } catch {
-      return dateStr;
-    }
-  }
-
   function isHolidayOrWeekend(dateStr: string) {
     const d = new Date(dateStr);
     const day = d.getDay();
@@ -166,22 +154,10 @@ export default function DailyRecord() {
       <h2 style={{ marginBottom: '20px' }}>บันทึกเวลา</h2>
       <div className="record-controls glass-panel">
         <div style={{ width: '100%' }}>
-          <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-gray)', marginBottom: '5px' }}>
+          <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-gray)', marginBottom: '8px' }}>
             เลือกวันที่ตรวจสอบ
           </label>
-          <input
-            type="date"
-            id="record-date"
-            className="date-picker-large"
-            style={{ width: '100%' }}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </div>
-        <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div id="record-date-display" style={{ fontSize: '16px', color: 'var(--text-main)', fontWeight: 700, display: 'flex', alignItems: 'center' }}>
-            {formatThaiDate(date)}
-          </div>
+          <DatePicker selectedDate={date} onChange={setDate} />
         </div>
         {message && (
           <div style={{ width: '100%', fontSize: '13px', color: message.includes('ล้มเหลว') ? 'var(--red)' : 'var(--green)', fontWeight: 500 }}>

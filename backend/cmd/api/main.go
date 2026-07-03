@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/Nattamon123/employee/backend/internal/config"
@@ -10,6 +11,9 @@ import (
 )
 
 func main() {
+	// ตั้งค่าเวลาเป็น Asia/Bangkok
+	time.Local = time.FixedZone("Asia/Bangkok", 7*60*60)
+
 	// โหลดตัวแปรจากไฟล์ .env
 	if err := godotenv.Load(".env"); err != nil {
 		if err := godotenv.Load("../.env"); err != nil {
