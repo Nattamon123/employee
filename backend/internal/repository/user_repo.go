@@ -124,3 +124,16 @@ func (r *UserRepo) ListAll(ctx context.Context) ([]domain.User, error) {
 	}
 	return users, nil
 }
+
+// CompareFaceDistance คำนวณระยะห่าง (Euclidean distance) ของ Face Vector เทียบกับที่บันทึกไว้
+func (r *UserRepo) CompareFaceDistance(ctx context.Context, id uuid.UUID, faceVector string) (float64, error) {
+	var distance float64
+	err := r.db.GetContext(
+		ctx,
+		&distance,
+		`SELECT (face_embedding <-> $1::vector) AS distance FROM users WHERE id = $2 AND face_embedding IS NOT NULL`,
+		faceVector,
+		id,
+	)
+	return distance, err
+}

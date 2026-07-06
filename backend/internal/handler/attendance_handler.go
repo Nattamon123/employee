@@ -20,10 +20,11 @@ func NewAttendanceHandler(svc *service.AttendanceService) *AttendanceHandler {
 
 // checkInBody ข้อมูลที่แอปส่งมาตอนเช็คอิน
 type checkInBody struct {
-	Lat      float64 `json:"lat" binding:"required"`       // พิกัดละติจูด
-	Lng      float64 `json:"lng" binding:"required"`       // พิกัดลองจิจูด
-	DeviceID string  `json:"device_id" binding:"required"` // UUID ของเครื่องมือถือ
-	PhotoURL *string `json:"photo_url"`                     // URL รูปถ่าย (ถ้ามี)
+	Lat        float64   `json:"lat" binding:"required"`       // พิกัดละติจูด
+	Lng        float64   `json:"lng" binding:"required"`       // พิกัดลองจิจูด
+	DeviceID   string    `json:"device_id" binding:"required"` // UUID ของเครื่องมือถือ
+	PhotoURL   *string   `json:"photo_url"`                    // URL รูปถ่าย (ถ้ามี)
+	FaceVector []float64 `json:"face_vector" binding:"required"`
 }
 
 // CheckIn POST /api/attendance/checkin
@@ -31,18 +32,25 @@ type checkInBody struct {
 func (h *AttendanceHandler) CheckIn(c *gin.Context) {
 	var body checkInBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลไม่ครบ กรุณาเปิด GPS แล้วลองใหม่"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลไม่ครบ กรุณาตรวจสอบ GPS และการแสกนใบหน้า"})
 		return
 	}
 
 	userID, _ := c.Get(middleware.ContextKeyUserID)
 
+	faceVectorStr, err := formatFaceVector(body.FaceVector, true)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	req := service.CheckInRequest{
-		UserID:   userID.(uuid.UUID),
-		Lat:      body.Lat,
-		Lng:      body.Lng,
-		PhotoURL: body.PhotoURL,
-		DeviceID: body.DeviceID,
+		UserID:     userID.(uuid.UUID),
+		Lat:        body.Lat,
+		Lng:        body.Lng,
+		PhotoURL:   body.PhotoURL,
+		DeviceID:   body.DeviceID,
+		FaceVector: faceVectorStr,
 	}
 
 	att, err := h.svc.CheckIn(c.Request.Context(), req)

@@ -44,7 +44,7 @@ export default function AdminLayout() {
             <button className="btn-hamburger" onClick={toggleSidebar}>
               <i className="fa-solid fa-bars"></i>
             </button>
-            <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>NexHR</div>
+            <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>HR</div>
             <div
               className="avatar-circle"
               style={{

@@ -31,7 +31,7 @@ func main() {
 		log.Fatalf("Failed to initialize server: %v", err)
 	}
 
-	log.Printf("NexHR API starting on port %s", cfg.Port)
+	log.Printf("API starting on port %s", cfg.Port)
 	if err := srv.Run(); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}

@@ -49,7 +49,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           alignItems: 'center',
         }}
       >
-        NexHR System
+        HR System
         <i
           className="fa-solid fa-times"
           style={{
@@ -62,7 +62,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           onClick={onClose}
         ></i>
       </div>
-      
+
       <NavLink to="/dashboard" className={navLinkClass}>
         <i className="fa-solid fa-chart-pie"></i> ภาพรวมระบบ
       </NavLink>

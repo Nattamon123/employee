@@ -15,6 +15,7 @@ interface RequestRow {
   detail: string;
   reason: string;
   createdAt: string;
+  medicalCertUrl?: string;
 }
 
 export default function Requests() {
@@ -49,6 +50,7 @@ export default function Requests() {
           detail: `${l.leave_type}${l.duration && l.duration !== 'เต็มวัน' ? ` (${l.duration})` : ''}`,
           reason: l.reason,
           createdAt: l.created_at,
+          medicalCertUrl: l.medical_cert_url,
         });
       });
 
@@ -153,6 +155,13 @@ export default function Requests() {
                     {row.reason && (
                       <div style={{ fontSize: '12px', color: 'var(--text-gray)', marginTop: '2px' }}>
                         {row.reason}
+                      </div>
+                    )}
+                    {row.medicalCertUrl && (
+                      <div style={{ marginTop: '4px' }}>
+                        <a href={row.medicalCertUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: 'var(--primary)', textDecoration: 'underline' }}>
+                          <i className="fa-solid fa-paperclip"></i> ดูใบรับรองแพทย์
+                        </a>
                       </div>
                     )}
                   </td>

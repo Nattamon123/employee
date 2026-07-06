@@ -19,6 +19,7 @@ type AttendanceService struct {
 	attendanceRepo *repository.AttendanceRepo
 	locationRepo   *repository.LocationRepo
 	offsiteRepo    *repository.OffsiteRepo
+	userRepo       *repository.UserRepo
 	cfg            *config.Config
 }
 
@@ -26,23 +27,26 @@ func NewAttendanceService(
 	ar *repository.AttendanceRepo,
 	lr *repository.LocationRepo,
 	or *repository.OffsiteRepo,
+	ur *repository.UserRepo,
 	cfg *config.Config,
 ) *AttendanceService {
 	return &AttendanceService{
 		attendanceRepo: ar,
 		locationRepo:   lr,
 		offsiteRepo:    or,
+		userRepo:       ur,
 		cfg:            cfg,
 	}
 }
 
 // CheckInRequest ข้อมูลที่ Client ส่งมาตอนเช็คอิน
 type CheckInRequest struct {
-	UserID   uuid.UUID
-	Lat      float64
-	Lng      float64
-	PhotoURL *string
-	DeviceID string // Device UUID ที่ส่งมาจากแอป (ใช้ตรวจ Device Binding)
+	UserID     uuid.UUID
+	Lat        float64
+	Lng        float64
+	PhotoURL   *string
+	DeviceID   string // Device UUID ที่ส่งมาจากแอป (ใช้ตรวจ Device Binding)
+	FaceVector *string
 }
 
 // CheckIn ดำเนินการเช็คอินเข้างาน
@@ -55,6 +59,19 @@ func (s *AttendanceService) CheckIn(ctx context.Context, req CheckInRequest) (*d
 	existing, _ := s.attendanceRepo.FindByUserAndDate(ctx, req.UserID, today)
 	if existing != nil {
 		return nil, errors.New("คุณเช็คอินวันนี้ไปแล้ว")
+	}
+
+	// 1.5 ตรวจใบหน้า (Face Matching)
+	if req.FaceVector == nil || *req.FaceVector == "" {
+		return nil, errors.New("ไม่พบข้อมูลใบหน้า กรุณาสแกนใบหน้าเพื่อเช็คอิน")
+	}
+	distance, err := s.userRepo.CompareFaceDistance(ctx, req.UserID, *req.FaceVector)
+	if err != nil {
+		// ถ้า err แสดงว่าไม่มี face_embedding ในฐานข้อมูล
+		return nil, errors.New("กรุณาลงทะเบียนใบหน้าก่อนทำการเช็คอิน")
+	}
+	if distance > 1.2 {
+		return nil, errors.New("ใบหน้าไม่ตรงกับที่ลงทะเบียนไว้")
 	}
 
 	// 2. ตรวจ Geofence (ADR 0004)

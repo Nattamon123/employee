@@ -8,7 +8,8 @@ import type {
   Holiday,
   WorkLocation,
   PendingRequestsData,
-  HistoryRecord
+  HistoryRecord,
+  LeaveQuota
 } from '../types';
 
 // ────────────────── Users ──────────────────
@@ -143,4 +144,23 @@ export async function fetchUserHistory(id: string): Promise<{
 export async function fetchAllRequests(): Promise<PendingRequestsData> {
   const { data } = await api.get<ApiResponse<PendingRequestsData>>('/admin/requests/all');
   return data.data;
+}
+
+// ────────────────── Leave Quotas (Admin) ──────────────────
+
+export async function fetchUserQuota(id: string, year: number): Promise<LeaveQuota> {
+  const { data } = await api.get<ApiResponse<LeaveQuota>>(`/admin/users/${id}/quota`, {
+    params: { year },
+  });
+  return data.data;
+}
+
+export async function updateUserQuota(
+  id: string,
+  year: number,
+  body: { sick_leave: number; personal_leave: number; annual_leave: number }
+): Promise<void> {
+  await api.put(`/admin/users/${id}/quota`, body, {
+    params: { year },
+  });
 }

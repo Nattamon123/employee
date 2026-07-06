@@ -40,7 +40,7 @@ func New(cfg *config.Config) (*Server, error) {
 
 	// --- สร้าง Services (ชั้น Business Logic) ---
 	userSvc := service.NewUserService(userRepo)
-	attendanceSvc := service.NewAttendanceService(attendanceRepo, locationRepo, offsiteRepo, cfg)
+	attendanceSvc := service.NewAttendanceService(attendanceRepo, locationRepo, offsiteRepo, userRepo, cfg)
 	leaveSvc := service.NewLeaveService(leaveRepo, leaveQuotaRepo)
 	offsiteSvc := service.NewOffsiteService(offsiteRepo)
 	holidaySvc := service.NewHolidayService(holidayRepo)

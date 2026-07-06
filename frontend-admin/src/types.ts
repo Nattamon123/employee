@@ -105,3 +105,14 @@ export interface PendingRequestsData {
   leaves: LeaveRequest[];
   offsite: OffsiteRequest[];
 }
+
+export interface LeaveQuota {
+  id: string;
+  user_id: string;
+  year: number;
+  sick_leave: number;
+  personal_leave: number;
+  annual_leave: number;
+  created_at: string;
+  updated_at: string;
+}

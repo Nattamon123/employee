@@ -55,7 +55,7 @@ export default function Login() {
     <div id="login-section" style={{ display: 'flex' }}>
       <div className="login-left">
         <div className="brand-logo">
-          <i className="fa-solid fa-shapes"></i> NexHR System
+          <i className="fa-solid fa-shapes"></i>HR System
         </div>
         <div className="login-header">
           <h1>

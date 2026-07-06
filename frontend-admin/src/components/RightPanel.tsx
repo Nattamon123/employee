@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchAllRequests, fetchUserHistory } from '../services/adminApi';
+import { fetchAllRequests, fetchUserHistory, fetchUserQuota, updateUserQuota } from '../services/adminApi';
 import type { LeaveRequest, User } from '../types';
 
 interface RightPanelProps {
@@ -15,12 +15,24 @@ export default function RightPanel({ selectedUser }: RightPanelProps) {
   const [usedVacation, setUsedVacation] = useState(0);
   const [usedSwap, setUsedSwap] = useState(0);
 
+  // โควต้าสูงสุด (State ดึงจาก Database)
+  const [maxSick, setMaxSick] = useState(30);
+  const [maxPersonal, setMaxPersonal] = useState(6);
+  const [maxVacation, setMaxVacation] = useState(6);
+
+  // การแก้ไขโควต้า
+  const [isEditingQuota, setIsEditingQuota] = useState(false);
+  const [editSick, setEditSick] = useState(30);
+  const [editPersonal, setEditPersonal] = useState(6);
+  const [editVacation, setEditVacation] = useState(6);
+
   useEffect(() => {
     loadTodayData();
   }, []);
 
   useEffect(() => {
     if (selectedUser) {
+      setIsEditingQuota(false);
       loadEmployeeQuota(selectedUser.id);
     }
   }, [selectedUser]);
@@ -44,8 +56,11 @@ export default function RightPanel({ selectedUser }: RightPanelProps) {
 
   async function loadEmployeeQuota(userId: string) {
     try {
-      const history = await fetchUserHistory(userId);
       const currentYear = new Date().getFullYear();
+      const [history, quota] = await Promise.all([
+        fetchUserHistory(userId),
+        fetchUserQuota(userId, currentYear)
+      ]);
 
       let sick = 0;
       let personal = 0;
@@ -68,8 +83,38 @@ export default function RightPanel({ selectedUser }: RightPanelProps) {
       setUsedPersonal(personal);
       setUsedVacation(vacation);
       setUsedSwap(swap);
+
+      if (quota) {
+        setMaxSick(quota.sick_leave);
+        setMaxPersonal(quota.personal_leave);
+        setMaxVacation(quota.annual_leave);
+      } else {
+        // Fallback default
+        setMaxSick(30);
+        setMaxPersonal(6);
+        setMaxVacation(6);
+      }
     } catch (err) {
       console.error('โหลดโควตาวันลาล้มเหลว:', err);
+    }
+  }
+
+  async function handleSaveQuota() {
+    if (!selectedUser) return;
+    try {
+      const currentYear = new Date().getFullYear();
+      await updateUserQuota(selectedUser.id, currentYear, {
+        sick_leave: editSick,
+        personal_leave: editPersonal,
+        annual_leave: editVacation,
+      });
+      setMaxSick(editSick);
+      setMaxPersonal(editPersonal);
+      setMaxVacation(editVacation);
+      setIsEditingQuota(false);
+    } catch (err) {
+      console.error('บันทึกโควต้าล้มเหลว:', err);
+      alert('บันทึกโควต้าล้มเหลว');
     }
   }
 
@@ -86,10 +131,6 @@ export default function RightPanel({ selectedUser }: RightPanelProps) {
       isToday: i === 0,
     });
   }
-
-  const maxSick = 30;
-  const maxPersonal = 3;
-  const maxVacation = 7;
 
   function renderQuotaBar(label: string, iconClass: string, used: number, max: number, gradient: string) {
     const percent = Math.min((used / max) * 100, 100);
@@ -120,20 +161,100 @@ export default function RightPanel({ selectedUser }: RightPanelProps) {
       <div className="widget" id="quota-widget">
         {selectedUser ? (
           <>
-            <div className="widget-title">สิทธิวันลาคงเหลือ (ปีปัจจุบัน)</div>
+            <div className="widget-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>สิทธิวันลาคงเหลือ (ปีปัจจุบัน)</span>
+              {!isEditingQuota && (
+                <button
+                  type="button"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--primary-color)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                  }}
+                  onClick={() => {
+                    setEditSick(maxSick);
+                    setEditPersonal(maxPersonal);
+                    setEditVacation(maxVacation);
+                    setIsEditingQuota(true);
+                  }}
+                >
+                  <i className="fa-solid fa-pen-to-square" style={{ marginRight: '4px' }}></i> แก้ไข
+                </button>
+              )}
+            </div>
             <div id="quota-content">
-              {renderQuotaBar('ลาป่วย (ใช้ไป)', 'fa-notes-medical', usedSick, maxSick, 'linear-gradient(90deg, #93C5FD, #2563EB)')}
-              {renderQuotaBar('ลากิจ (ใช้ไป)', 'fa-briefcase', usedPersonal, maxPersonal, 'linear-gradient(90deg, #67E8F9, #0EA5E9)')}
-              {renderQuotaBar('พักร้อน (ใช้ไป)', 'fa-plane-departure', usedVacation, maxVacation, 'linear-gradient(90deg, #A5B4FC, #4F46E5)')}
-              
-              <div className="quota-item" style={{ marginTop: '15px', borderTop: '1px dashed rgba(0,0,0,0.1)', paddingTop: '15px' }}>
-                <div className="quota-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 }}>
-                  <span style={{ color: '#595959', display: 'flex', alignItems: 'center', fontSize: '13px' }}>
-                    <i className="fa-solid fa-rotate" style={{ marginRight: '8px', color: 'var(--text-gray)' }}></i> สลับวันหยุด (ใช้ไป)
-                  </span>
-                  <span style={{ fontWeight: 'bold', color: 'var(--text-main)', fontSize: '13px' }}>{usedSwap} ครั้ง</span>
+              {isEditingQuota ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(255, 255, 255, 0.4)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 500 }}><i className="fa-solid fa-notes-medical" style={{ marginRight: '6px', color: 'var(--blue)' }}></i> ลาป่วย (วัน)</span>
+                    <input
+                      type="number"
+                      className="form-control"
+                      style={{ width: '70px', padding: '6px 8px', fontSize: '13px', margin: 0, textAlign: 'center' }}
+                      value={editSick}
+                      onChange={(e) => setEditSick(Math.max(0, parseInt(e.target.value) || 0))}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 500 }}><i className="fa-solid fa-briefcase" style={{ marginRight: '6px', color: 'var(--blue)' }}></i> ลากิจ (วัน)</span>
+                    <input
+                      type="number"
+                      className="form-control"
+                      style={{ width: '70px', padding: '6px 8px', fontSize: '13px', margin: 0, textAlign: 'center' }}
+                      value={editPersonal}
+                      onChange={(e) => setEditPersonal(Math.max(0, parseInt(e.target.value) || 0))}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 500 }}><i className="fa-solid fa-plane-departure" style={{ marginRight: '6px', color: 'var(--blue)' }}></i> พักร้อน (วัน)</span>
+                    <input
+                      type="number"
+                      className="form-control"
+                      style={{ width: '70px', padding: '6px 8px', fontSize: '13px', margin: 0, textAlign: 'center' }}
+                      value={editVacation}
+                      onChange={(e) => setEditVacation(Math.max(0, parseInt(e.target.value) || 0))}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '5px' }}>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      style={{ flex: 1, padding: '8px', fontSize: '12px' }}
+                      onClick={handleSaveQuota}
+                    >
+                      บันทึก
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-reset"
+                      style={{ flex: 1, padding: '8px', fontSize: '12px', margin: 0 }}
+                      onClick={() => setIsEditingQuota(false)}
+                    >
+                      ยกเลิก
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  {renderQuotaBar('ลาป่วย (ใช้ไป)', 'fa-notes-medical', usedSick, maxSick, 'linear-gradient(90deg, #93C5FD, #2563EB)')}
+                  {renderQuotaBar('ลากิจ (ใช้ไป)', 'fa-briefcase', usedPersonal, maxPersonal, 'linear-gradient(90deg, #67E8F9, #0EA5E9)')}
+                  {renderQuotaBar('พักร้อน (ใช้ไป)', 'fa-plane-departure', usedVacation, maxVacation, 'linear-gradient(90deg, #A5B4FC, #4F46E5)')}
+                  
+                  <div className="quota-item" style={{ marginTop: '15px', borderTop: '1px dashed rgba(0,0,0,0.1)', paddingTop: '15px' }}>
+                    <div className="quota-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 }}>
+                      <span style={{ color: '#595959', display: 'flex', alignItems: 'center', fontSize: '13px' }}>
+                        <i className="fa-solid fa-rotate" style={{ marginRight: '8px', color: 'var(--text-gray)' }}></i> สลับวันหยุด (ใช้ไป)
+                      </span>
+                      <span style={{ fontWeight: 'bold', color: 'var(--text-main)', fontSize: '13px' }}>{usedSwap} ครั้ง</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </>
         ) : (
