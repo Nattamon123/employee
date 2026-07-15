@@ -21,7 +21,7 @@ func NewUserRepo(db *sqlx.DB) *UserRepo {
 // ใช้ตอน JWT middleware ดึงข้อมูล user หลังจาก verify token สำเร็จ
 func (r *UserRepo) FindByAuthID(ctx context.Context, authID uuid.UUID) (*domain.User, error) {
 	var user domain.User
-	err := r.db.GetContext(ctx, &user, `SELECT id, auth_id, email, first_name, last_name, department, position, role, status, device_id, avatar_url, created_at, updated_at FROM users WHERE auth_id = $1`, authID)
+	err := r.db.GetContext(ctx, &user, `SELECT id, auth_id, email, first_name, last_name, department, position, role, status, device_id, avatar_url, face_embedding::text AS face_embedding, created_at, updated_at FROM users WHERE auth_id = $1`, authID)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (r *UserRepo) FindByAuthID(ctx context.Context, authID uuid.UUID) (*domain.
 // FindByID ค้นหา user จาก primary key
 func (r *UserRepo) FindByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
 	var user domain.User
-	err := r.db.GetContext(ctx, &user, `SELECT id, auth_id, email, first_name, last_name, department, position, role, status, device_id, avatar_url, created_at, updated_at FROM users WHERE id = $1`, id)
+	err := r.db.GetContext(ctx, &user, `SELECT id, auth_id, email, first_name, last_name, department, position, role, status, device_id, avatar_url, face_embedding::text AS face_embedding, created_at, updated_at FROM users WHERE id = $1`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (r *UserRepo) FindByID(ctx context.Context, id uuid.UUID) (*domain.User, er
 // FindByEmail ค้นหา user จาก email
 func (r *UserRepo) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
 	var user domain.User
-	err := r.db.GetContext(ctx, &user, `SELECT id, auth_id, email, first_name, last_name, department, position, role, status, device_id, avatar_url, created_at, updated_at FROM users WHERE email = $1`, email)
+	err := r.db.GetContext(ctx, &user, `SELECT id, auth_id, email, first_name, last_name, department, position, role, status, device_id, avatar_url, face_embedding::text AS face_embedding, created_at, updated_at FROM users WHERE email = $1`, email)
 	if err != nil {
 		return nil, err
 	}

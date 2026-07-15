@@ -70,7 +70,7 @@ func (s *AttendanceService) CheckIn(ctx context.Context, req CheckInRequest) (*d
 		// ถ้า err แสดงว่าไม่มี face_embedding ในฐานข้อมูล
 		return nil, errors.New("กรุณาลงทะเบียนใบหน้าก่อนทำการเช็คอิน")
 	}
-	if distance > 1.2 {
+	if distance > 0.75 {
 		return nil, errors.New("ใบหน้าไม่ตรงกับที่ลงทะเบียนไว้")
 	}
 

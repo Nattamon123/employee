@@ -25,7 +25,7 @@ type Config struct {
 // Load reads configuration from environment variables.
 func Load() (*Config, error) {
 	cfg := &Config{
-		Port:                   getEnv("PORT", "8080"),
+		Port:                   getEnv("PORT", ""),
 		SupabaseURL:            getEnv("SUPABASE_URL", ""),
 		SupabaseAnonKey:        getEnv("SUPABASE_ANON_KEY", ""),
 		SupabaseDatabaseURL:    getEnv("SUPABASE_DATABASE_URL", ""),
@@ -34,7 +34,9 @@ func Load() (*Config, error) {
 		LateThresholdHour:      9,
 		LateThresholdMinute:    0,
 	}
-
+	if cfg.Port == ""{
+		return nil , fmt.Errorf("PORT is required")
+	}
 	// Validate required fields
 	if cfg.SupabaseDatabaseURL == "" {
 		return nil, fmt.Errorf("SUPABASE_DATABASE_URL is required")
