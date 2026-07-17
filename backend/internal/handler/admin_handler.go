@@ -168,9 +168,12 @@ type HistoryRecord struct {
 	Status     string     `json:"status"`
 	Type       string     `json:"type"` // attendance, leave, offsite
 	Reason     string     `json:"reason"`
-	CheckInAt  *time.Time `json:"check_in_at,omitempty"`
-	CheckOutAt *time.Time `json:"check_out_at,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
+	CheckInAt        *time.Time `json:"check_in_at,omitempty"`
+	CheckOutAt       *time.Time `json:"check_out_at,omitempty"`
+	CheckInPhoto     *string    `json:"check_in_photo,omitempty"`
+	CheckOutPhoto    *string    `json:"check_out_photo,omitempty"`
+	MedicalCertUrl   *string    `json:"medical_cert_url,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
 }
 
 // GetMonthlyHistory GET /admin/history/monthly?month=YYYY-MM
@@ -223,9 +226,11 @@ func (h *AdminHandler) GetMonthlyHistory(c *gin.Context) {
 				Status:     a.Status,
 				Type:       "attendance",
 				Reason:     "",
-				CheckInAt:  a.CheckInAt,
-				CheckOutAt: a.CheckOutAt,
-				CreatedAt:  createdAt,
+				CheckInAt:     a.CheckInAt,
+				CheckOutAt:    a.CheckOutAt,
+				CheckInPhoto:  a.CheckInPhoto,
+				CheckOutPhoto: a.CheckOutPhoto,
+				CreatedAt:     createdAt,
 			})
 	}
 
@@ -242,8 +247,9 @@ func (h *AdminHandler) GetMonthlyHistory(c *gin.Context) {
 				Position:   u.Position,
 				Status:     l.LeaveType + " " + l.Duration + " (" + l.Status + ")",
 				Type:       "leave",
-				Reason:     l.Reason,
-				CreatedAt:  l.CreatedAt,
+				Reason:         l.Reason,
+				MedicalCertUrl: l.MedicalCertURL,
+				CreatedAt:      l.CreatedAt,
 			})
 	}
 

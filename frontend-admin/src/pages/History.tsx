@@ -11,7 +11,8 @@ import {
   translateStatus,
   getStatusClass,
   computeLateMinutes,
-  computeWorkHours
+  computeWorkMinutes,
+  formatWorkHoursHMM
 } from '../utils/attendanceHelpers';
 
 const PAGE_SIZE = 20;
@@ -47,6 +48,29 @@ export default function History() {
   );
   const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState<'log' | 'summary'>('log');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  function getImageUrl(url: string) {
+    if (url.startsWith('r2://')) {
+      return url.replace('r2://', 'https://pub-2a877f7cc07b481ca09dec82cb240465.r2.dev/');
+    }
+    return url;
+  }
+
+  function parseImageUrls(urlStr: string | undefined): string[] {
+    if (!urlStr) return [];
+    try {
+      if (urlStr.trim().startsWith('[')) {
+        const arr = JSON.parse(urlStr);
+        if (Array.isArray(arr)) {
+          return arr.map((u: string) => getImageUrl(u));
+        }
+      }
+    } catch (e) {
+      // Fallback
+    }
+    return [getImageUrl(urlStr)];
+  }
 
   const [selectedYear, selectedMonth] = useMemo(() => {
     const [y, m] = filterMonth.split('-');
@@ -237,7 +261,7 @@ export default function History() {
             stat.lateMinutes += late;
           }
         }
-        stat.totalWorkHours += computeWorkHours(r.check_in_at, r.check_out_at);
+        stat.totalWorkHours += computeWorkMinutes(r.check_in_at, r.check_out_at);
       } else if (r.type === 'leave' && r.status.includes('approved')) {
         const val = r.status.includes('ครึ่ง') ? 0.5 : 1.0;
         if (r.status.includes('ลาป่วย')) stat.sickLeave += val;
@@ -395,6 +419,7 @@ export default function History() {
                   <th style={{ whiteSpace: 'nowrap', textAlign: 'center' }}>ออก</th>
                   <th style={{ whiteSpace: 'nowrap', textAlign: 'center' }}>สาย<br/><small>(นาที)</small></th>
                   <th style={{ whiteSpace: 'nowrap', textAlign: 'center' }}>ชม.<br/>ทำงาน</th>
+                  <th style={{ whiteSpace: 'nowrap', textAlign: 'center', width: '50px' }}>รูป</th>
                   <th style={{ whiteSpace: 'nowrap' }}>หมายเหตุ</th>
                 </tr>
               </thead>
@@ -415,7 +440,7 @@ export default function History() {
                   pagedRows.map((row, idx) => {
                     const ymd = row.date.split('T')[0];
                     const late = row.type === 'attendance' ? computeLateMinutes(row.check_in_at, row.user_name, ymd, morningLeaveMap) : 0;
-                    const wh = row.type === 'attendance' ? computeWorkHours(row.check_in_at, row.check_out_at) : 0;
+                    const whMins = row.type === 'attendance' ? computeWorkMinutes(row.check_in_at, row.check_out_at) : 0;
                     return (
                       <tr key={`${row.date}-${row.user_name}-${idx}`}>
                         <td data-label="วันที่" style={{ whiteSpace: 'nowrap' }}>{formatDate(row.date)}</td>
@@ -437,9 +462,28 @@ export default function History() {
                           {row.type === 'attendance' && late > 0 ? late : '-'}
                         </td>
                         <td data-label="ชม.ทำงาน" style={{ textAlign: 'center' }}>
-                          {row.type === 'attendance' && wh > 0 ? wh : '-'}
+                          {row.type === 'attendance' && whMins > 0 ? formatWorkHoursHMM(whMins) : '-'}
                         </td>
-                        <td data-label="หมายเหตุ" style={{ fontSize: '12px', color: 'var(--text-gray)', maxWidth: '220px' }}>
+                        <td data-label="รูป" style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                            {row.medical_cert_url && parseImageUrls(row.medical_cert_url).map((url, i) => (
+                              <button key={`med-${i}`} onClick={() => setPreviewImage(url)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: 0, fontSize: '14px' }} title="ใบรับรองแพทย์">
+                                <i className="fa-solid fa-notes-medical"></i>
+                              </button>
+                            ))}
+                            {row.check_in_photo && (
+                              <button onClick={() => setPreviewImage(getImageUrl(row.check_in_photo!))} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: 0, fontSize: '14px' }} title="รูปเข้างาน">
+                                <i className="fa-solid fa-camera"></i>
+                              </button>
+                            )}
+                            {row.check_out_photo && (
+                              <button onClick={() => setPreviewImage(getImageUrl(row.check_out_photo!))} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: 0, fontSize: '14px' }} title="รูปออกงาน">
+                                <i className="fa-solid fa-camera"></i>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td data-label="หมายเหตุ" style={{ fontSize: '12px', color: 'var(--text-gray)', maxWidth: '160px' }}>
                           {row.reason || '-'}
                         </td>
                       </tr>
@@ -499,7 +543,7 @@ export default function History() {
                       <td data-label="ลากิจ (วัน)" style={{ textAlign: 'center', color: row.personalLeave ? 'var(--danger-color)' : 'inherit' }}>{row.personalLeave || '-'}</td>
                       <td data-label="ลาพักร้อน (วัน)" style={{ textAlign: 'center', color: row.annualLeave ? 'var(--primary-color)' : 'inherit' }}>{row.annualLeave || '-'}</td>
                       <td data-label="ออกหน้างาน (ครั้ง)" style={{ textAlign: 'center' }}>{row.offsite || '-'}</td>
-                      <td data-label="ชม.ทำงานรวม" style={{ textAlign: 'center' }}>{row.totalWorkHours > 0 ? row.totalWorkHours : '-'}</td>
+                      <td data-label="ชม.ทำงานรวม" style={{ textAlign: 'center' }}>{row.totalWorkHours > 0 ? formatWorkHoursHMM(row.totalWorkHours) : '-'}</td>
                       <td data-label="% ตรงเวลา" style={{ textAlign: 'center', fontWeight: 600, color: row.onTimeRate >= 90 ? 'var(--success-color)' : row.onTimeRate >= 75 ? 'var(--gold)' : 'var(--danger-color)' }}>{row.onTimeRate}%</td>
                     </tr>
                   ))
@@ -527,6 +571,29 @@ export default function History() {
           </button>
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div 
+          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%' }}>
+            <button 
+              onClick={() => setPreviewImage(null)}
+              style={{ position: 'absolute', top: '-15px', right: '-15px', background: 'white', color: 'black', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }}
+            >
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+            <img 
+              src={previewImage} 
+              alt="Preview" 
+              style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px', backgroundColor: 'white' }} 
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

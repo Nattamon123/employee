@@ -29,10 +29,17 @@ export function computeLateMinutes(
   return diffMs > 0 ? Math.floor(diffMs / 60000) : 0;
 }
 
-export function computeWorkHours(checkInAt: string | undefined, checkOutAt: string | undefined): number {
+export function computeWorkMinutes(checkInAt: string | undefined, checkOutAt: string | undefined): number {
   if (!checkInAt || !checkOutAt) return 0;
   const diffMs = new Date(checkOutAt).getTime() - new Date(checkInAt).getTime();
-  return diffMs > 0 ? Math.round((diffMs / 3600000) * 100) / 100 : 0;
+  return diffMs > 0 ? Math.floor(diffMs / 60000) : 0;
+}
+
+export function formatWorkHoursHMM(minutes: number): string {
+  if (minutes <= 0) return '0.00';
+  const h = Math.floor(minutes / 60);
+  const m = Math.floor(minutes % 60);
+  return `${h}.${m.toString().padStart(2, '0')}`;
 }
 
 export function formatDate(iso: string) {

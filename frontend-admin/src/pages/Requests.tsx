@@ -22,6 +22,29 @@ export default function Requests() {
   const [rows, setRows] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  function getImageUrl(url: string) {
+    if (url.startsWith('r2://')) {
+      return url.replace('r2://', 'https://pub-2a877f7cc07b481ca09dec82cb240465.r2.dev/');
+    }
+    return url;
+  }
+
+  function parseImageUrls(urlStr: string | undefined): string[] {
+    if (!urlStr) return [];
+    try {
+      if (urlStr.trim().startsWith('[')) {
+        const arr = JSON.parse(urlStr);
+        if (Array.isArray(arr)) {
+          return arr.map((u: string) => getImageUrl(u));
+        }
+      }
+    } catch (e) {
+      // Fallback
+    }
+    return [getImageUrl(urlStr)];
+  }
 
   useEffect(() => {
     loadRequests();
@@ -158,10 +181,17 @@ export default function Requests() {
                       </div>
                     )}
                     {row.medicalCertUrl && (
-                      <div style={{ marginTop: '4px' }}>
-                        <a href={row.medicalCertUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: 'var(--primary)', textDecoration: 'underline' }}>
-                          <i className="fa-solid fa-paperclip"></i> ดูใบรับรองแพทย์
-                        </a>
+                      <div style={{ marginTop: '6px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {parseImageUrls(row.medicalCertUrl).map((imgUrl, idx) => (
+                          <img 
+                            key={idx}
+                            src={imgUrl} 
+                            alt={`Medical Certificate ${idx+1}`} 
+                            style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid rgba(0,0,0,0.1)' }} 
+                            onClick={() => setPreviewImage(imgUrl)}
+                            title="คลิกเพื่อดูรูปใหญ่"
+                          />
+                        ))}
                       </div>
                     )}
                   </td>
@@ -191,6 +221,29 @@ export default function Requests() {
           </tbody>
         </table>
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div 
+          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%' }}>
+            <button 
+              onClick={() => setPreviewImage(null)}
+              style={{ position: 'absolute', top: '-15px', right: '-15px', background: 'white', color: 'black', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }}
+            >
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+            <img 
+              src={previewImage} 
+              alt="Preview" 
+              style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px', backgroundColor: 'white' }} 
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

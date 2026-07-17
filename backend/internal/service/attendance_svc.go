@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/Nattamon123/employee/backend/internal/config"
 	"github.com/Nattamon123/employee/backend/internal/domain"
 	"github.com/Nattamon123/employee/backend/internal/repository"
 	"github.com/Nattamon123/employee/backend/pkg/geo"
+	"github.com/google/uuid"
 )
 
 // AttendanceService เป็น "สมอง" ของระบบเข้างาน
@@ -52,7 +52,7 @@ type CheckInRequest struct {
 // CheckIn ดำเนินการเช็คอินเข้างาน
 // ขั้นตอน: ตรวจซ้ำ → ตรวจ Geofence (ถ้าไม่ใช่ Offsite) → คำนวณสาย → บันทึก
 func (s *AttendanceService) CheckIn(ctx context.Context, req CheckInRequest) (*domain.Attendance, error) {
-	now := time.Now()                            // ⚡ ใช้เวลาของ Server เสมอ ห้ามเชื่อ Client
+	now := time.Now() // ⚡ ใช้เวลาของ Server เสมอ ห้ามเชื่อ Client
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
 	// 1. ตรวจว่าเช็คอินซ้ำหรือยัง
@@ -70,7 +70,9 @@ func (s *AttendanceService) CheckIn(ctx context.Context, req CheckInRequest) (*d
 		// ถ้า err แสดงว่าไม่มี face_embedding ในฐานข้อมูล
 		return nil, errors.New("กรุณาลงทะเบียนใบหน้าก่อนทำการเช็คอิน")
 	}
-	if distance > 0.75 {
+	// threshold 0.55 (L2 distance) เทียบเท่าความเหมือน (Cosine Similarity) ประมาณ 85%
+	// เดิมตั้งไว้ 0.75 (ความเหมือน 72%) ซึ่งหลวมเกินไป ทำให้คนอื่นสแกนแทนกันได้ง่าย
+	if distance > 0.6 {
 		return nil, errors.New("ใบหน้าไม่ตรงกับที่ลงทะเบียนไว้")
 	}
 
@@ -119,15 +121,15 @@ func (s *AttendanceService) CheckIn(ctx context.Context, req CheckInRequest) (*d
 
 	// 4. บันทึกลง DB
 	att := &domain.Attendance{
-		ID:            uuid.New(),
-		UserID:        req.UserID,
-		Date:          today,
-		CheckInAt:     &now,
-		Status:        status,
-		CheckInLat:    &req.Lat,
-		CheckInLng:    &req.Lng,
-		CheckInPhoto:  req.PhotoURL,
-		LocationID:    matchedLocationID,
+		ID:           uuid.New(),
+		UserID:       req.UserID,
+		Date:         today,
+		CheckInAt:    &now,
+		Status:       status,
+		CheckInLat:   &req.Lat,
+		CheckInLng:   &req.Lng,
+		CheckInPhoto: req.PhotoURL,
+		LocationID:   matchedLocationID,
 	}
 
 	if err := s.attendanceRepo.CreateCheckIn(ctx, att); err != nil {
@@ -214,7 +216,7 @@ func (s *AttendanceService) CreateManual(ctx context.Context, userID uuid.UUID, 
 	if targetDate.After(todayDate) && (status == "on_time" || status == "late") {
 		return nil, errors.New("ไม่สามารถบันทึกสถานะ 'ตรงเวลา' หรือ 'มาสาย' สำหรับวันในอนาคตได้")
 	}
-	
+
 	// ตั้งเวลา CheckInAt เฉพาะการเข้างานจริงๆ เท่านั้น (ไม่รวมการลาต่างๆ)
 	if status == "on_time" || status == "late" || status == "offsite" {
 		var t time.Time
@@ -246,4 +248,3 @@ func (s *AttendanceService) CreateManual(ctx context.Context, userID uuid.UUID, 
 
 	return att, nil
 }
-

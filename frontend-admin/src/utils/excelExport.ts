@@ -6,7 +6,8 @@ import {
   translateType, 
   translateStatus, 
   computeLateMinutes, 
-  computeWorkHours 
+  computeWorkMinutes,
+  formatWorkHoursHMM
 } from './attendanceHelpers';
 
 // ──── Styling Helpers for Excel Export ────
@@ -193,7 +194,7 @@ export function exportXLSX(
   const logBody = filteredRows.map(r => {
     const ymd = r.date.split('T')[0];
     const late = r.type === 'attendance' ? computeLateMinutes(r.check_in_at, r.user_name, ymd, morningLeaveMap) : 0;
-    const wh = r.type === 'attendance' ? computeWorkHours(r.check_in_at, r.check_out_at) : 0;
+    const whMins = r.type === 'attendance' ? computeWorkMinutes(r.check_in_at, r.check_out_at) : 0;
     return [
       formatDate(r.date),
       r.email,
@@ -205,7 +206,7 @@ export function exportXLSX(
       r.type === 'attendance' ? formatTime(r.check_in_at) : '-',
       r.type === 'attendance' ? formatTime(r.check_out_at) : '-',
       r.type === 'attendance' && late > 0 ? late : '',
-      r.type === 'attendance' && wh > 0 ? wh : '',
+      r.type === 'attendance' && whMins > 0 ? formatWorkHoursHMM(whMins) : '',
       r.reason || '',
     ];
   });
@@ -227,7 +228,7 @@ export function exportXLSX(
     s.email, s.name, s.department || '-', s.scheduledDays,
     s.presentCount, s.lateCount, s.lateMinutes, s.absentDays,
     s.sickLeave, s.personalLeave, s.annualLeave, s.offsite,
-    s.totalWorkHours, s.onTimeRate
+    s.totalWorkHours > 0 ? formatWorkHoursHMM(s.totalWorkHours) : '', s.onTimeRate
   ]);
   
   // แถวรวมทั้งบริษัท
@@ -249,7 +250,7 @@ export function exportXLSX(
     '', 'รวมทั้งหมด', '', totalScheduled,
     totalPresent, totalLate, totalLateMin, totalAbsent,
     totalSick, totalPersonal, totalAnnual, totalOffsite,
-    Math.round(totalHours * 100) / 100, overallRate
+    totalHours > 0 ? formatWorkHoursHMM(totalHours) : '', overallRate
   ]);
 
   const ws2 = XLSX.utils.aoa_to_sheet([sumHeaders, ...sumBody]);

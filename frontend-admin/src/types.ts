@@ -73,6 +73,9 @@ export interface HistoryRecord {
   reason: string;
   check_in_at?: string;
   check_out_at?: string;
+  check_in_photo?: string;
+  check_out_photo?: string;
+  medical_cert_url?: string;
   created_at: string;
 }
 
