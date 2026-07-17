@@ -105,7 +105,6 @@ func registerRoutes(
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "service": "nexhr-api"})
 	})
-
 	// สร้าง KeyManager เพื่อดึงและแคช Public Keys จาก Supabase JWKS (สำหรับยืนยัน ES256 tokens)
 	keyManager := middleware.NewKeyManager(cfg.SupabaseURL, cfg.SupabaseAnonKey)
 

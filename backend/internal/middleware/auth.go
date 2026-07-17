@@ -224,7 +224,19 @@ func RequireActive() gin.HandlerFunc {
 			return
 		}
 
-		if status != "active" {
+		statusStr, ok := status.(string)
+		if !ok {
+			statusStr = fmt.Sprintf("%v", status)
+		}
+
+		if statusStr == "suspended" || statusStr == "disabled" || statusStr == "banned" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error": "บัญชีของคุณถูกระงับการใช้งาน",
+			})
+			return
+		}
+
+		if statusStr != "active" {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
 				"error": "บัญชีของคุณยังไม่ได้รับการอนุมัติจากแอดมิน กรุณารอการอนุมัติ",
 			})
