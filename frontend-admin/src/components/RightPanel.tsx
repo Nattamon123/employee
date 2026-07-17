@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchAllRequests, fetchUserHistory, fetchUserQuota, updateUserQuota, updateLeaveStatus } from '../services/adminApi';
+import { fetchUserHistory, fetchUserQuota, updateUserQuota, updateLeaveStatus } from '../services/adminApi';
 import type { LeaveRequest, User } from '../types';
 
 interface RightPanelProps {
@@ -7,7 +7,6 @@ interface RightPanelProps {
 }
 
 export default function RightPanel({ selectedUser }: RightPanelProps) {
-  const [todayLeaves, setTodayLeaves] = useState<LeaveRequest[]>([]);
   const [userLeaves, setUserLeaves] = useState<LeaveRequest[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
@@ -51,32 +50,11 @@ export default function RightPanel({ selectedUser }: RightPanelProps) {
   const [editVacation, setEditVacation] = useState(6);
 
   useEffect(() => {
-    loadTodayData();
-  }, []);
-
-  useEffect(() => {
     if (selectedUser) {
       setIsEditingQuota(false);
       loadEmployeeQuota(selectedUser.id);
     }
   }, [selectedUser]);
-
-  async function loadTodayData() {
-    const todayStr = new Date().toISOString().split('T')[0];
-    try {
-      const [allRequests] = await Promise.all([
-        fetchAllRequests(),
-      ]);
-
-      const todaysLeaves = (allRequests.leaves ?? []).filter(l => {
-        const leaveDate = l.date.split('T')[0];
-        return leaveDate === todayStr && l.status === 'approved';
-      });
-      setTodayLeaves(todaysLeaves);
-    } catch {
-      // backend อาจยังไม่พร้อม
-    }
-  }
 
   async function loadEmployeeQuota(userId: string) {
     try {
