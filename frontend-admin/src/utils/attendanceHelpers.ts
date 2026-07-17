@@ -3,6 +3,14 @@ export const THAI_MONTHS_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม
 export const WORK_START_HOUR = 9;
 export const WORK_START_MIN = 0;
 
+export function getImageUrl(url: string | undefined): string {
+  if (!url) return '';
+  if (url.startsWith('r2://')) {
+    return url.replace('r2://', 'https://pub-2a877f7cc07b481ca09dec82cb240465.r2.dev/');
+  }
+  return url;
+}
+
 export function getThaiMonthYearString(year: number, month: number) {
   const months = [
     'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',

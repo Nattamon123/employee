@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { fetchUsers, fetchAllAttendance, fetchAllRequests, fetchHolidays, fetchUserHistory } from '../services/adminApi';
+import { getImageUrl } from '../utils/attendanceHelpers';
 import type { User, Attendance, LeaveRequest, OffsiteRequest, Holiday } from '../types';
 
 export default function Dashboard() {
@@ -607,12 +608,25 @@ export default function Dashboard() {
                 filteredRows.map(({ user, status, statusClass, checkInTime }) => (
                   <tr key={user.id}>
                     <td data-label="ชื่อ-นามสกุล">
-                      <span
-                        style={{ cursor: 'pointer', color: 'var(--blue)', textDecoration: 'underline' }} 
-                        onClick={() => handleSelectEmployee(user)}
-                      >
-                        {user.first_name} {user.last_name}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {user.avatar_url ? (
+                          <img 
+                            src={getImageUrl(user.avatar_url)} 
+                            alt={`${user.first_name}`} 
+                            style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-color)', flexShrink: 0 }} 
+                          />
+                        ) : (
+                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 'bold', flexShrink: 0 }}>
+                            {user.first_name.charAt(0)}{user.last_name.charAt(0)}
+                          </div>
+                        )}
+                        <span
+                          style={{ cursor: 'pointer', color: 'var(--blue)', textDecoration: 'underline' }} 
+                          onClick={() => handleSelectEmployee(user)}
+                        >
+                          {user.first_name} {user.last_name}
+                        </span>
+                      </div>
                     </td>
                     <td data-label="ตำแหน่ง">{user.position || user.department || '-'}</td>
                     <td data-label="สถานะ">
